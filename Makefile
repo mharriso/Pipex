@@ -1,33 +1,38 @@
-CC         = gcc
-CFLAGS     = #-Wall -Wextra -Werror
-INCLUDE    = ./include
-NAME       = pipex
-SRCDIR     = src
-OBJDIR     = .obj
-SRCS       = main.c \
-             utils.c
-SRCS       := $(addprefix $(SRCDIR)/, $(SRCS))
-OBJS       = $(SRCS:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
+NAME	=	pipex
+SRC		=	src
+FT		=	libft
+INC		=	include
+HEADER	=	pipex.h
+HFILES	=	$(addprefix $(INC)/, $(HEADER))
 
-GREEN      = [1;32m
-RESET      = [0m
+SRC_F	= main.c \
+          utils.c
 
-all: $(NAME)
-$(NAME): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $@
-	@echo "$(GREEN)Built target $(NAME)$(RESET)"
+SOURCE	= $(addprefix $(SRC)/, $(SRC_F))
+FLAGS	= #-Wall -Wextra -Werror
+OBJECTS	= ${SOURCE:.c=.o}
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
-	$(CC) $(CFLAGS) -I $(INCLUDE) -c $< -o $@
-$(OBJDIR):
-	@mkdir -p $@
+
+all: ${NAME}
+
+$(NAME): ${OBJECTS}
+	make bonus -C ${FT}
+	gcc -I ${INC} $(OBJECTS) -l ft -L ${FT} -o $(NAME)
+
+%.o: %.c ${HFILES}
+	gcc ${FLAGS} -I ${INC} -c $< -o $@
 
 clean:
-	@-rm -rf $(OBJDIR)
-
+	make clean -C ${FT}
+	rm -f ${OBJECTS}
 fclean: clean
-	@-rm -f $(NAME)
-
+	make fclean -C ${FT}
+	rm -f ${NAME}
 re: fclean all
 
-.PHONY: all clean fclean re
+bonus: ${NAME}
+
+norm:
+	norminette src/* inc/*
+
+.PHONY: all clean fclean re bonus
