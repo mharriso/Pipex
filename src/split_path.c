@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_split.c                                         :+:      :+:    :+:   */
+/*   split_path.c                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mharriso <mharriso@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/10/28 17:49:39 by mharriso          #+#    #+#             */
-/*   Updated: 2021/07/11 02:59:25 by mharriso         ###   ########.fr       */
+/*   Updated: 2021/07/11 03:31:46 by mharriso         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,7 +56,7 @@ static	char	**free_words(char **array)
 	return (NULL);
 }
 
-char	**ft_split(char const *s, char c)
+char	**split_path(char const *s, char c)
 {
 	char		**res;
 	size_t		len;
@@ -75,10 +75,11 @@ char	**ft_split(char const *s, char c)
 		while (s[i] == c)
 			i++;
 		word_len = get_word_len(s + i, c);
-		res[j] = ft_calloc((word_len + 1), sizeof(char));
+		res[j] = ft_calloc((word_len + 2), sizeof(char));
 		if (!res[j])
 			return (free_words(res));
 		res[j] = ft_memcpy(res[j], s + i, word_len);
+		res[j][word_len] = '/';
 		i += word_len;
 	}
 	return (res);

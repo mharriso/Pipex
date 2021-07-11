@@ -2,11 +2,13 @@ NAME	=	pipex
 SRC		=	src
 FT		=	libft
 INC		=	include
-HEADER	=	pipex.h
+HEADER	=	pipex.h \
+			libft.h
 HFILES	=	$(addprefix $(INC)/, $(HEADER))
 
 SRC_F	= main.c \
-          utils.c
+          utils.c \
+		  split_path.c
 
 SOURCE	= $(addprefix $(SRC)/, $(SRC_F))
 FLAGS	= #-Wall -Wextra -Werror
