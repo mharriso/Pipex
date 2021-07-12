@@ -5,13 +5,21 @@
 #define STDOUT 1
 #define STDIN 0
 
-typedef struct s_commands
+typedef struct s_cmd
 {
-	char ***array;
-	char **path;
-	char *file_in;
-	char *file_out;
-} t_commands;
+	char	**arg;
+	char	*path;
+	int		pipe[2];
+	size_t	size;
+} t_cmd;
+
+typedef struct s_info
+{
+	t_cmd	*cmd;
+	char	*file_in;
+	char	*file_out;
+	size_t	size;
+} t_info;
 
 void	ft_free(char **str)
 {
@@ -47,21 +55,22 @@ void	exit_error(char *s)
 	exit(EXIT_FAILURE);
 }
 
-void		save_args(t_commands *cmd, int argc, char **argv)
+void		save_args(t_info *info, int argc, char **argv)
 {
 	if(argc != 5)
-		exit_error("Invalid arguments: file1 cmd1 cmd2 file2");
-	cmd->array = malloc(3 * sizeof(char **));
-	cmd->path = ft_calloc(3, sizeof(char *));
-	if(!cmd->array || !cmd->path)
-		exit_error("Can not allocate cmd array");
-	cmd->array[0] = ft_split(argv[2], ' ');
-	cmd->array[1] = ft_split(argv[3], ' ');
-	cmd->array[2] = NULL;
-	if(!cmd->array[0] || !cmd->array[1])
-		exit_error("Can not allocate cmd array element");
-	cmd->file_in = argv[1];
-	cmd->file_out = argv[4];
+		exit_error("Invalid arguments: file1 info1 info2 file2");
+	info->size = 2;
+	info->cmd = malloc(info->size * sizeof(t_cmd));
+	info->cmd->arg = malloc(info->size * sizeof(char **));
+	if(!info->cmd || !info->cmd->arg)
+		exit_error("Can not allocate cmd");
+	info->cmd[0].arg = ft_split(argv[2], ' ');
+	info->cmd[1].arg = ft_split(argv[3], ' ');
+	info->cmd[2].arg = NULL;
+	if(!info->cmd[0].arg || !info->cmd[1].arg)
+		exit_error("Can not allocate cmd array arguments");
+	info->file_in = argv[1];
+	info->file_out = argv[4];
 }
 
 char *get_env_value(char *name, char **env)
@@ -88,9 +97,9 @@ char *get_env_value(char *name, char **env)
 	}
 	return (NULL);
 }
-char	*get_cmd_name(char *src)
+char	*get_info_name(char *src)
 {
-	char	*cmd;
+	char	*info;
 	char	*space;
 	size_t	size;
 
@@ -98,19 +107,19 @@ char	*get_cmd_name(char *src)
 	if(space)
 	{
 		size = space - src;
-		cmd = malloc(size + 1);
-		if(!cmd)
-			exit_error("Can not allocate cmd");
-		ft_memcpy(cmd, src, size);
-		cmd[size] = '\0';
+		info = malloc(size + 1);
+		if(!info)
+			exit_error("Can not allocate info");
+		ft_memcpy(info, src, size);
+		info[size] = '\0';
 	}
 	else
 	{
-		cmd = ft_strdup(src);
-		if(!cmd)
-			exit_error("Can not allocate cmd");
+		info = ft_strdup(src);
+		if(!info)
+			exit_error("Can not allocate info");
 	}
-	return (cmd);
+	return (info);
 }
 
 char	*set_path(char *path, char *cmd)
@@ -130,7 +139,7 @@ char	*set_path(char *path, char *cmd)
 	return (NULL);
 }
 
-void get_path_to_cmd(t_commands *cmd, char **env)
+void get_path_to_cmd(t_info *info, char **env)
 {
 	char	*tmp;
 	char	**path_array;
@@ -143,13 +152,13 @@ void get_path_to_cmd(t_commands *cmd, char **env)
 		exit_error("Can not allocate path_array");
 	ft_free(&tmp);
 	i = -1;
-	while(cmd->array[++i])
+	while(++i < info->size)
 	{
 		j = -1;
 		while(path_array[++j])
 		{
-			cmd->path[i] = set_path(path_array[j], cmd->array[i][0]);
-			if(cmd->path[i])
+			info->cmd[i].path = set_path(path_array[j], info->cmd[i].arg[0]);
+			if(info->cmd[i].path)
 				break ;
 		}
 		ft_free(&tmp);
@@ -157,37 +166,101 @@ void get_path_to_cmd(t_commands *cmd, char **env)
 	free_array(path_array);
 }
 
-void execute_commands(t_commands *cmd, char **env)
+// int exec_info(t_list *info, char **env)
+// {
+// 	pid_t	pid;
+// 	int		ret;
+// 	int		status;
+// 	int		pipe_open;
+
+// 	ret = EXIT_FAILURE;
+// 	pipe_open = 0;
+// 	if (info->type == TYPE_PIPE || (info->previous && info->previous->type == TYPE_PIPE))
+// 	{
+// 		pipe_open = 1;
+// 		if (pipe(info->pipes))
+// 			return (exit_fatal());
+// 	}
+// 	pid = fork();
+// 	if (pid < 0)
+// 		return (exit_fatal());
+// 	else if (pid == 0)
+// 	{
+// 		if (info->type == TYPE_PIPE
+// 			&& dup2(info->pipes[SIDE_IN], STDOUT) < 0)
+// 			return (exit_fatal());
+// 		if (info->previous && info->previous->type == TYPE_PIPE
+// 			&& dup2(info->previous->pipes[SIDE_OUT], STDIN) < 0)
+// 			return (exit_fatal());
+// 		if ((ret = execve(info->args[0], info->args, env)) < 0)
+// 			pritnf("error: cannot execute %s\n", info->args[0]);
+// 		exit(ret);
+// 	}
+// 	else
+// 	{
+// 		waitpid(pid, &status, 0);
+// 		if (pipe_open)
+// 		{
+// 			close(info->pipes[SIDE_IN]);
+// 			if (!info->next || info->type == TYPE_BREAK)
+// 				close(info->pipes[SIDE_OUT]);
+// 		}
+// 		if (info->previous && info->previous->type == TYPE_PIPE)
+// 			close(info->previous->pipes[SIDE_OUT]);
+// 		if (WIFEXITED(status))
+// 			ret = WEXITSTATUS(status);
+// 	}
+// 	return (ret);
+// }
+
+int	execute_cmd(t_info *info, char **env)
+{
+
+}
+
+void execute_commands(t_info *info, char **env)
 {
 	int	i;
 	char **args;
 
-	get_path_to_cmd(cmd, env);
-	for (size_t i = 0; cmd->array[i]; i++)
-		printf("path = |%s|\n", cmd->path[i]);
-	while(cmd->array[i])
-	{
-		printf("cmd  = |%s|\n", cmd->array[i][0]);
-		execve(cmd->path[i], cmd->array[i], env);
-		i++;
-	}
+	get_path_to_cmd(info, env);
+	for (size_t i = 0; i < info->size; i++)
+		printf("path = |%s|\n", info->cmd[i].path);
+	i = 0;
+	// while(i < info->size)
+	// {
+	// 	printf("cmd  = |%s|\n", info->cmd[i].arg[0]);
+	// 	execve(info->cmd[i].path, info->cmd[i].arg, env);
+	// 	i++;
+	// }
 }
 
+void	free_info(t_info *info)
+{
+	int	i;
+
+	i = 0;
+	while(i < info->size)
+	{
+		free_array(info->cmd[i].arg);
+		ft_free(&info->cmd[i].path);
+		i++;
+	}
+	free(info);
+}
 int main(int argc, char const **argv, char **env)
 {
-	t_commands *cmd;
+	t_info *info;
 
-	cmd = malloc(sizeof(t_commands));
-	if(!cmd)
-		exit_error("Can not allocate cmd");
-	save_args(cmd, argc, (char **)argv);
-	execute_commands(cmd, env);
+	info = malloc(sizeof(t_info));
+	if(!info)
+		exit_error("Can not allocate info");
+	save_args(info, argc, (char **)argv);
+	execute_commands(info, env);
 
-	free_array(cmd->path);
-	free(cmd->array);
-	free(cmd);
+	free_info(info);
 
-	//sleep(20);
+	sleep(20);
 	return (0);
 }
 
