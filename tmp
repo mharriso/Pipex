@@ -1,0 +1,24 @@
+void get_path_to_cmd(t_commands *cmd, char *cmd, char **env)
+{
+	char	*tmp;
+	char	*path;
+	char	**path_array;
+
+	int		j;
+
+	tmp = get_env_value("PATH", env);
+	path_array = split_path(tmp, ':');
+	if(!path_array)
+		exit_error("Can not allocate path_array");
+	ft_free(&tmp);
+	j = -1;
+	tmp = get_cmd_name(cmd);
+	while(path_array[++j])
+	{
+		path = set_path(path_array[j], tmp);
+		if(path)
+			break ;
+	}
+	ft_free(tmp);
+	free_array(path_array);
+}

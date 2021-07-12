@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#define PROMT "-> pipex: "
+
 char	**split_path(char const *s, char c);
 
 
