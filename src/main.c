@@ -1,9 +1,18 @@
 #include "pipex.h"
 #include <stdio.h>
+#include <fcntl.h>
 #include "libft.h"
 
 #define STDOUT 1
 #define STDIN 0
+
+#define SIDE_OUT 1
+#define SIDE_IN 0
+
+# define R_LEFT 1
+# define R_RIGHT 2
+# define R_DRIGHT 3
+# define R_DLEFT 4
 
 typedef struct s_cmd
 {
@@ -18,6 +27,7 @@ typedef struct s_info
 	t_cmd	*cmd;
 	char	*file_in;
 	char	*file_out;
+	char	*limiter;
 	size_t	size;
 } t_info;
 
@@ -55,10 +65,20 @@ void	exit_error(char *s)
 	exit(EXIT_FAILURE);
 }
 
+void	print_error(char *s)
+{
+	ft_putstr_fd(PROMT, STDOUT);
+	if (errno)
+		perror(s);
+	else
+		ft_putendl_fd(s, STDOUT);
+}
+
 void		save_args(t_info *info, int argc, char **argv)
 {
 	if(argc != 5)
 		exit_error("Invalid arguments: file1 info1 info2 file2");
+	info->limiter = NULL;
 	info->size = 2;
 	info->cmd = malloc(info->size * sizeof(t_cmd));
 	info->cmd->arg = malloc(info->size * sizeof(char **));
@@ -66,7 +86,6 @@ void		save_args(t_info *info, int argc, char **argv)
 		exit_error("Can not allocate cmd");
 	info->cmd[0].arg = ft_split(argv[2], ' ');
 	info->cmd[1].arg = ft_split(argv[3], ' ');
-	info->cmd[2].arg = NULL;
 	if(!info->cmd[0].arg || !info->cmd[1].arg)
 		exit_error("Can not allocate cmd array arguments");
 	info->file_in = argv[1];
@@ -97,30 +116,6 @@ char *get_env_value(char *name, char **env)
 	}
 	return (NULL);
 }
-char	*get_info_name(char *src)
-{
-	char	*info;
-	char	*space;
-	size_t	size;
-
-	space = ft_strchr(src, ' ');
-	if(space)
-	{
-		size = space - src;
-		info = malloc(size + 1);
-		if(!info)
-			exit_error("Can not allocate info");
-		ft_memcpy(info, src, size);
-		info[size] = '\0';
-	}
-	else
-	{
-		info = ft_strdup(src);
-		if(!info)
-			exit_error("Can not allocate info");
-	}
-	return (info);
-}
 
 char	*set_path(char *path, char *cmd)
 {
@@ -141,16 +136,16 @@ char	*set_path(char *path, char *cmd)
 
 void get_path_to_cmd(t_info *info, char **env)
 {
-	char	*tmp;
+	char	*path;
 	char	**path_array;
 	int		i;
 	int		j;
 
-	tmp = get_env_value("PATH", env);
-	path_array = split_path(tmp, ':');
+	path = get_env_value("PATH", env);
+	path_array = split_path(path, ':');
 	if(!path_array)
 		exit_error("Can not allocate path_array");
-	ft_free(&tmp);
+	ft_free(&path);
 	i = -1;
 	while(++i < info->size)
 	{
@@ -161,7 +156,6 @@ void get_path_to_cmd(t_info *info, char **env)
 			if(info->cmd[i].path)
 				break ;
 		}
-		ft_free(&tmp);
 	}
 	free_array(path_array);
 }
@@ -213,6 +207,31 @@ void get_path_to_cmd(t_info *info, char **env)
 // 	return (ret);
 // }
 
+static int	redirect(char *fname, int red_type)
+{
+	int		fd;
+	int		flags;
+	int		dup_fd;
+
+	dup_fd = STDOUT;
+	if (red_type == R_LEFT)
+	{
+		flags = O_RDONLY;
+		dup_fd = STDIN;
+	}
+	else if (red_type == R_RIGHT)
+		flags = O_CREAT | O_WRONLY | O_TRUNC;
+	else if (red_type == R_DRIGHT)
+		flags = O_CREAT | O_WRONLY | O_APPEND;
+	else
+		return (-2);
+	fd = open(fname, flags, S_IREAD | S_IWRITE);
+	if (fd == -1)
+		return (-1);
+	dup2(fd, dup_fd);
+	return (fd);
+}
+
 int	execute_cmd(t_info *info, char **env)
 {
 
@@ -220,19 +239,42 @@ int	execute_cmd(t_info *info, char **env)
 
 void execute_commands(t_info *info, char **env)
 {
-	int	i;
-	char **args;
+	int		i;
+	int		fd;
+	char	**args;
 
 	get_path_to_cmd(info, env);
-	for (size_t i = 0; i < info->size; i++)
-		printf("path = |%s|\n", info->cmd[i].path);
-	i = 0;
-	// while(i < info->size)
-	// {
-	// 	printf("cmd  = |%s|\n", info->cmd[i].arg[0]);
-	// 	execve(info->cmd[i].path, info->cmd[i].arg, env);
-	// 	i++;
-	// }
+
+	i = -1;
+	while(++i < info->size)
+	{
+		//printf("path = |%s|\n", info->cmd[i].path);
+		//printf("cmd  = |%s|\n", info->cmd[i].arg[0]);
+		if (i == 0)
+		{
+			fd = redirect(info->file_in, R_LEFT);
+			if(fd == -1)
+			{
+				print_error(info->file_in);
+				continue ;
+			}
+
+		}
+		else if (i == info->size - 1)
+		{
+			fd = redirect(info->file_out, R_RIGHT);
+			if(fd == -1)
+			{
+				print_error(info->file_out);
+				continue ;
+
+			}
+		}
+		execve(info->cmd[i].path, info->cmd[i].arg, env);
+		print_error("Error");
+	}
+
+
 }
 
 void	free_info(t_info *info)
@@ -258,9 +300,10 @@ int main(int argc, char const **argv, char **env)
 	save_args(info, argc, (char **)argv);
 	execute_commands(info, env);
 
+
 	free_info(info);
 
-	sleep(20);
+	//sleep(20);
 	return (0);
 }
 
