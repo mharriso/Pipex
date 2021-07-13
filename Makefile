@@ -1,18 +1,19 @@
 NAME	=	pipex
-SRC		=	src
+SRCDIR	=	src
+OBJDIR	=	.obj
 FT		=	libft
 INC		=	include
 HEADER	=	pipex.h \
 			libft.h
 HFILES	=	$(addprefix $(INC)/, $(HEADER))
 
-SRC_F	= main.c \
-          utils.c \
+SRCS	= main.c \
+		  utils.c \
 		  split_path.c
 
-SOURCE	= $(addprefix $(SRC)/, $(SRC_F))
-FLAGS	= #-Wall -Wextra -Werror
-OBJECTS	= ${SOURCE:.c=.o}
+SRCS	:=	$(addprefix $(SRCDIR)/, $(SRCS))
+FLAGS	=	#-Wall -Wextra -Werror
+OBJECTS	=	$(SRCS:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 
 
 all: ${NAME}
@@ -21,12 +22,14 @@ $(NAME): ${OBJECTS}
 	make bonus -C ${FT}
 	gcc -I ${INC} $(OBJECTS) -l ft -L ${FT} -o $(NAME)
 
-%.o: %.c ${HFILES}
+$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
 	gcc ${FLAGS} -I ${INC} -c $< -o $@
+$(OBJDIR):
+	@mkdir -p $@
 
 clean:
 	make clean -C ${FT}
-	rm -f ${OBJECTS}
+	rm -rf ${OBJDIR}
 fclean: clean
 	make fclean -C ${FT}
 	rm -f ${NAME}
