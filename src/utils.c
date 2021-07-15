@@ -26,20 +26,20 @@ char	**free_array(char **array)
 
 void	exit_error(char *s)
 {
-	ft_putstr_fd(PROMT, STDOUT);
+	ft_putstr_fd(PROMT, STDERR);
 	if (errno)
 		perror(s);
 	else
-		ft_putendl_fd(s, STDOUT);
+		ft_putendl_fd(s, STDERR);
 	exit(EXIT_FAILURE);
 }
 
 void	print_error(char *msg, char *arg)
 {
-	ft_putstr_fd(PROMT, STDOUT);
-	ft_putstr_fd(msg, STDOUT);
+	ft_putstr_fd(PROMT, STDERR);
+	ft_putstr_fd(msg, STDERR);
 	if (errno)
 		perror(arg);
 	else
-		ft_putendl_fd(arg, STDOUT);
+		ft_putendl_fd(arg, STDERR);
 }

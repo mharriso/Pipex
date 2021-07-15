@@ -1,6 +1,8 @@
 #include "pipex.h"
 #include <fcntl.h>
 #include "libft.h"
+// #include <sys/types.h>
+// #include <sys/wait.h>
 
 t_cmd	*init_cmd(char **argv, size_t size)
 {
@@ -30,11 +32,22 @@ t_cmd	*init_cmd(char **argv, size_t size)
 void		save_args(t_info *info, int argc, char **argv)
 {
 	if(argc != 5)
-		exit_error("Invalid arguments: file1 info1 info2 file2");
+		exit_error("Invalid arguments: file1 cmd1 cmd2 file2");
 	info->limiter = NULL;
 	info->size = 2;
 	info->file_in = argv[1];
 	info->file_out = argv[4];
+	info->cmd = init_cmd(argv, info->size);
+}
+
+void		save_args_bonus(t_info *info, int argc, char **argv)
+{
+	if(argc < 5)
+		exit_error("Invalid arguments: file1 cmd1 cmd2 ... cmdn file2");
+	info->limiter = NULL;
+	info->size = argc - 3;
+	info->file_in = argv[1];
+	info->file_out = argv[argc - 1];
 	info->cmd = init_cmd(argv, info->size);
 }
 
@@ -84,7 +97,7 @@ void get_path_to_cmd(t_info *info, char **env)
 {
 	char	*path;
 	char	**path_array;
-	int		i;
+	size_t		i;
 	int		j;
 
 	path = get_env_value("PATH", env);
@@ -194,16 +207,16 @@ int	set_redirect(t_cmd *cmd, t_info *info)
 
 void execute_commands(t_info *info, char **env)
 {
-	int		i;
-	int		fd;
+	size_t	i;
 	int		status;
 	pid_t	pid;
 
 	get_path_to_cmd(info, env);
 	i = -1;
-	for(int j = 0; j < info->size; j++)
-		if(pipe(info->cmd[j].pipe) == -1)
-			exit_error("Pipe");
+	// for(int j = 0; j < info->size; j++)
+	// 	if(pipe(info->cmd[j].pipe) == -1)
+	// 		exit_error("Pipe");
+	//printf("path %s\n", info->cmd[0].path);
 	while(++i < info->size)
 	{
 		if(info->cmd[i].path == NULL)
@@ -211,7 +224,8 @@ void execute_commands(t_info *info, char **env)
 			print_error(info->cmd[i].arg[0], ": command not found");
 			continue ;
 		}
-
+		if(pipe(info->cmd[i].pipe) == -1)
+			exit_error("Pipe");
 		pid = fork();
 		if(pid == -1)
 			exit_error("Fork");
@@ -225,10 +239,6 @@ void execute_commands(t_info *info, char **env)
 					exit_error("dup2");
 				close(info->cmd[i].pipe[SIDE_OUT]);
 				close(info->cmd[i].pipe[SIDE_IN]);
-				// if(dup2(info->cmd[i].pipe[SIDE_OUT], info->cmd[i + 1].pipe[SIDE_IN]) == -1)
-				// 	exit_error("dup2");
-				// close(info->cmd[i].pipe[SIDE_IN]);
-				// close(info->cmd[i].pipe[SIDE_OUT]);
 			}
 			else if(info->cmd[i].type == R_RIGHT)
 			{
@@ -236,10 +246,15 @@ void execute_commands(t_info *info, char **env)
 					exit_error("dup2");
 				close(info->cmd[i].pipe[SIDE_OUT]);
 				close(info->cmd[i].pipe[SIDE_IN]);
-				// if(dup2(info->cmd[i].pipe[SIDE_IN], info->cmd[i - 1].pipe[SIDE_OUT]) == -1)
-				// 	exit_error("dup2");
-				// close(info->cmd[i].pipe[SIDE_IN]);
-				// close(info->cmd[i].pipe[SIDE_OUT]);
+			}
+			else if(info->cmd[i].type == PIPE)
+			{
+				if(dup2(info->cmd[i].pipe[SIDE_OUT], STDOUT) == -1)
+					exit_error("dup2");
+				if(dup2(info->cmd[i - 1].pipe[SIDE_IN], STDIN) == -1)
+					exit_error("dup2");
+				close(info->cmd[i].pipe[SIDE_OUT]);
+				close(info->cmd[i].pipe[SIDE_IN]);
 			}
 
 			execve(info->cmd[i].path, info->cmd[i].arg, env);
@@ -263,7 +278,7 @@ void execute_commands(t_info *info, char **env)
 
 void	free_info(t_info *info)
 {
-	int	i;
+	size_t	i;
 
 	i = 0;
 	while(i < info->size)
@@ -284,7 +299,6 @@ int main(int argc, char const **argv, char **env)
 		exit_error("Can not allocate info");
 	save_args(info, argc, (char **)argv);
 	execute_commands(info, env);
-	//test_pipe
 
 	free_info(info);
 

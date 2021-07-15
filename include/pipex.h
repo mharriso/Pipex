@@ -22,6 +22,7 @@
 
 # define STDOUT 1
 # define STDIN 0
+# define STDERR 2
 # define SIDE_OUT 1
 # define SIDE_IN 0
 
