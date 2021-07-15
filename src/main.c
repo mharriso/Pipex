@@ -1,77 +1,30 @@
 #include "pipex.h"
-#include <stdio.h>
 #include <fcntl.h>
 #include "libft.h"
 
-#define STDOUT 1
-#define STDIN 0
-
-#define SIDE_OUT 1
-#define SIDE_IN 0
-
-# define R_LEFT 1
-# define R_RIGHT 2
-# define R_DRIGHT 3
-# define R_DLEFT 4
-
-typedef struct s_cmd
+t_cmd	*init_cmd(char **argv, size_t size)
 {
-	char	**arg;
-	char	*path;
-	int		pipe[2];
-	size_t	size;
-} t_cmd;
-
-typedef struct s_info
-{
-	t_cmd	*cmd;
-	char	*file_in;
-	char	*file_out;
-	char	*limiter;
-	size_t	size;
-} t_info;
-
-void	ft_free(char **str)
-{
-	if(!*str)
-		return ;
-	free(*str);
-	*str = NULL;
-}
-
-char	**free_array(char **array)
-{
+	t_cmd		*cmd;
 	size_t		i;
 
+	cmd = malloc(size * sizeof(t_cmd));
+	if(!cmd)
+		exit_error("Can not allocate cmd");
 	i = 0;
-	while (array[i])
+	while(i < size)
 	{
-		free(array[i]);
+		cmd[i].arg = ft_split(argv[i + 2], ' ');
+		if(!cmd[i].arg)
+			exit_error("Can not allocate cmd arguments");
+		if(i == 0)
+			cmd[i].type = R_LEFT;
+		else if(i == size - 1)
+			cmd[i].type = R_RIGHT;
+		else
+			cmd[i].type = PIPE;
 		i++;
 	}
-	free(array);
-	return (NULL);
-}
-
-void	exit_error(char *s)
-{
-	if (errno)
-		perror(s);
-	else
-	{
-		ft_putstr_fd(PROMT, STDOUT);
-		ft_putendl_fd(s, STDOUT);
-	}
-	exit(EXIT_FAILURE);
-}
-
-void	print_error(char *s)
-{
-	ft_putstr_fd(PROMT, STDOUT);
-	if (errno)
-		perror(s);
-	else
-		ft_putendl_fd(s, STDOUT);
+	return (cmd);
 }
 
 void		save_args(t_info *info, int argc, char **argv)
@@ -80,16 +33,9 @@ void		save_args(t_info *info, int argc, char **argv)
 		exit_error("Invalid arguments: file1 info1 info2 file2");
 	info->limiter = NULL;
 	info->size = 2;
-	info->cmd = malloc(info->size * sizeof(t_cmd));
-	info->cmd->arg = malloc(info->size * sizeof(char **));
-	if(!info->cmd || !info->cmd->arg)
-		exit_error("Can not allocate cmd");
-	info->cmd[0].arg = ft_split(argv[2], ' ');
-	info->cmd[1].arg = ft_split(argv[3], ' ');
-	if(!info->cmd[0].arg || !info->cmd[1].arg)
-		exit_error("Can not allocate cmd array arguments");
 	info->file_in = argv[1];
 	info->file_out = argv[4];
+	info->cmd = init_cmd(argv, info->size);
 }
 
 char *get_env_value(char *name, char **env)
@@ -165,26 +111,17 @@ void get_path_to_cmd(t_info *info, char **env)
 // 	pid_t	pid;
 // 	int		ret;
 // 	int		status;
-// 	int		pipe_open;
 
-// 	ret = EXIT_FAILURE;
-// 	pipe_open = 0;
-// 	if (info->type == TYPE_PIPE || (info->previous && info->previous->type == TYPE_PIPE))
-// 	{
-// 		pipe_open = 1;
-// 		if (pipe(info->pipes))
-// 			return (exit_fatal());
-// 	}
+// 	if (pipe(info->pipes) == -1)
+// 		exit_error("Error: ");
 // 	pid = fork();
 // 	if (pid < 0)
-// 		return (exit_fatal());
+// 		exit_error("Error: ");
 // 	else if (pid == 0)
 // 	{
-// 		if (info->type == TYPE_PIPE
-// 			&& dup2(info->pipes[SIDE_IN], STDOUT) < 0)
+// 		if (i > 0 && dup2(info->pipes[SIDE_IN], STDOUT) < 0)
 // 			return (exit_fatal());
-// 		if (info->previous && info->previous->type == TYPE_PIPE
-// 			&& dup2(info->previous->pipes[SIDE_OUT], STDIN) < 0)
+// 		if (i > 0 && dup2(info->previous->pipes[SIDE_OUT], STDIN) < 0)
 // 			return (exit_fatal());
 // 		if ((ret = execve(info->args[0], info->args, env)) < 0)
 // 			pritnf("error: cannot execute %s\n", info->args[0]);
@@ -201,10 +138,8 @@ void get_path_to_cmd(t_info *info, char **env)
 // 		}
 // 		if (info->previous && info->previous->type == TYPE_PIPE)
 // 			close(info->previous->pipes[SIDE_OUT]);
-// 		if (WIFEXITED(status))
-// 			ret = WEXITSTATUS(status);
 // 	}
-// 	return (ret);
+// 	return (0);
 // }
 
 static int	redirect(char *fname, int red_type)
@@ -229,52 +164,101 @@ static int	redirect(char *fname, int red_type)
 	if (fd == -1)
 		return (-1);
 	dup2(fd, dup_fd);
-	return (fd);
+	return (0);
 }
 
-int	execute_cmd(t_info *info, char **env)
+int	set_redirect(t_cmd *cmd, t_info *info)
 {
+	int	fd;
 
+	if (cmd->type == R_LEFT)
+	{
+		fd = redirect(info->file_in, R_LEFT);
+		if(fd == -1)
+		{
+			print_error("Error: ", info->file_in);
+			return (-1);
+		}
+	}
+	else if (cmd->type == R_RIGHT)
+	{
+		fd = redirect(info->file_out, R_RIGHT);
+		if(fd == -1)
+		{
+			print_error("Error: ", info->file_out);
+			return (-1);
+		}
+	}
+	return (0);
 }
 
 void execute_commands(t_info *info, char **env)
 {
 	int		i;
 	int		fd;
-	char	**args;
+	int		status;
+	pid_t	pid;
 
 	get_path_to_cmd(info, env);
-
 	i = -1;
+	for(int j = 0; j < info->size; j++)
+		if(pipe(info->cmd[j].pipe) == -1)
+			exit_error("Pipe");
 	while(++i < info->size)
 	{
-		//printf("path = |%s|\n", info->cmd[i].path);
-		//printf("cmd  = |%s|\n", info->cmd[i].arg[0]);
-		if (i == 0)
+		if(info->cmd[i].path == NULL)
 		{
-			fd = redirect(info->file_in, R_LEFT);
-			if(fd == -1)
+			print_error(info->cmd[i].arg[0], ": command not found");
+			continue ;
+		}
+
+		pid = fork();
+		if(pid == -1)
+			exit_error("Fork");
+		else if (pid == 0)
+		{
+			if(set_redirect(&info->cmd[i], info) == -1)
+				exit(EXIT_FAILURE);
+			if(info->cmd[i].type == R_LEFT)
 			{
-				print_error(info->file_in);
-				continue ;
+				if(dup2(info->cmd[i].pipe[SIDE_OUT], STDOUT) == -1)
+					exit_error("dup2");
+				close(info->cmd[i].pipe[SIDE_OUT]);
+				close(info->cmd[i].pipe[SIDE_IN]);
+				// if(dup2(info->cmd[i].pipe[SIDE_OUT], info->cmd[i + 1].pipe[SIDE_IN]) == -1)
+				// 	exit_error("dup2");
+				// close(info->cmd[i].pipe[SIDE_IN]);
+				// close(info->cmd[i].pipe[SIDE_OUT]);
+			}
+			else if(info->cmd[i].type == R_RIGHT)
+			{
+				if(dup2(info->cmd[i - 1].pipe[SIDE_IN], STDIN) == -1)
+					exit_error("dup2");
+				close(info->cmd[i].pipe[SIDE_OUT]);
+				close(info->cmd[i].pipe[SIDE_IN]);
+				// if(dup2(info->cmd[i].pipe[SIDE_IN], info->cmd[i - 1].pipe[SIDE_OUT]) == -1)
+				// 	exit_error("dup2");
+				// close(info->cmd[i].pipe[SIDE_IN]);
+				// close(info->cmd[i].pipe[SIDE_OUT]);
 			}
 
+			execve(info->cmd[i].path, info->cmd[i].arg, env);
+			exit_error("execve");
 		}
-		else if (i == info->size - 1)
+		else
 		{
-			fd = redirect(info->file_out, R_RIGHT);
-			if(fd == -1)
+			waitpid(pid, &status, 0);
+			close(info->cmd[i].pipe[SIDE_OUT]);
+			// if(info->cmd[i].type != R_LEFT)
+			// 	close(info->cmd[i - 1].pipe[SIDE_OUT]);
+			if(info->cmd[i].type == R_RIGHT)
 			{
-				print_error(info->file_out);
-				continue ;
-
+				close(info->cmd[i].pipe[SIDE_OUT]);
+				close(info->cmd[i].pipe[SIDE_IN]);
 			}
 		}
-		execve(info->cmd[i].path, info->cmd[i].arg, env);
-		print_error("Error");
+
 	}
-
-
 }
 
 void	free_info(t_info *info)
@@ -290,6 +274,7 @@ void	free_info(t_info *info)
 	}
 	free(info);
 }
+
 int main(int argc, char const **argv, char **env)
 {
 	t_info *info;
@@ -299,7 +284,7 @@ int main(int argc, char const **argv, char **env)
 		exit_error("Can not allocate info");
 	save_args(info, argc, (char **)argv);
 	execute_commands(info, env);
-
+	//test_pipe
 
 	free_info(info);
 
