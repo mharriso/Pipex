@@ -38,6 +38,7 @@ typedef struct s_cmd
 	char	*path;
 	int		type;
 	int		pipe[2];
+	pid_t	pid;
 	size_t	size;
 } t_cmd;
 

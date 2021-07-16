@@ -12,7 +12,7 @@ SRCS	= main.c \
 		  split_path.c
 
 SRCS	:=	$(addprefix $(SRCDIR)/, $(SRCS))
-FLAGS	=	-Wall -Wextra -Werror
+FLAGS	=	-g -Wall -Wextra -Werror
 OBJECTS	=	$(SRCS:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 
 GREEN      = [1;32m
