@@ -49,11 +49,7 @@ static void	close_fd(t_info *info, int i)
 	if (info->cmd[i].type != R_LEFT)
 		close(info->cmd[i - 1].pipe[SIDE_IN]);
 	if (info->cmd[i].type == R_RIGHT || info->cmd[i].type == R_DRIGHT)
-	{
 		close(info->cmd[i].pipe[SIDE_IN]);
-		if (info->cmd[i].type == R_DRIGHT)
-			unlink(info->file_in);
-	}
 }
 
 void	execute_commands(t_info *info, char **env)

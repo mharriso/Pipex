@@ -23,7 +23,7 @@ static int	here_doc(t_info *info)
 	int		ret;
 	char	*line;
 
-	doc = open(info->file_in, O_CREAT | O_RDWR | O_TRUNC, S_IREAD | S_IRWXU);
+	doc = open("here_doc", O_CREAT | O_RDWR | O_TRUNC, S_IREAD | S_IRWXU);
 	if (doc == -1)
 		exit_error(info->file_in);
 	write(1, "> ", 2);
