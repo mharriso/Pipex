@@ -184,7 +184,6 @@ int	here_doc(t_info *info)
 void	execute_commands(t_info *info, char **env)
 {
 	size_t	i;
-	//int		status;
 	int		fd;
 
 	get_path_to_cmd(info, env);
@@ -244,24 +243,15 @@ void	execute_commands(t_info *info, char **env)
 		}
 		else
 		{
-
 			close(info->cmd[i].pipe[SIDE_OUT]);
 			if(info->cmd[i].type != R_LEFT)
 				close(info->cmd[i - 1].pipe[SIDE_IN]);
-			if (info->cmd[i].type == R_RIGHT)
+			if (info->cmd[i].type == R_RIGHT || info->cmd[i].type == R_DRIGHT)
 				close(info->cmd[i].pipe[SIDE_IN]);
 		}
-
-		for(size_t k = 0; k < info->size; k++)
-		{
-			close(info->cmd[i].pipe[SIDE_IN]);
-			close(info->cmd[i].pipe[SIDE_OUT]);
-		}
-
-		//waitpid(info->cmd[info->size - 1].pid, NULL, 0);
-		for(size_t k = 0; k < info->size; k++)
-			wait(NULL);
 	}
+	for(size_t k = 0; k < info->size; k++)
+			wait(NULL);
 }
 
 void	free_info(t_info *info)
@@ -287,12 +277,11 @@ int	main(int argc, char const **argv, char **env)
 	if (!info)
 		exit_error("Can not allocate info");
 	save_args_bonus(info, argc, (char **)argv);
-	//printf("file out %s\n", info->file_out);
 	execute_commands(info, env);
 		if(info->limiter)
 		unlink(info->file_in);
 	free_info(info);
-	//sleep(10);
+	sleep(10);
 
 	return (0);
 }
