@@ -4,19 +4,7 @@
 # include <stdlib.h>
 # include <unistd.h>
 # include <stdio.h>
-
 # include "libft.h"
-
-
-# define RESET   "\033[0m"  //все атрибуты по умолчанию
-# define BLACK   "\033[30m"  //30-37 цвет текста
-# define RED     "\033[31m"
-# define GREEN   "\033[32m"
-# define YELLOW  "\033[33m"
-# define BLUE    "\033[34m"
-# define MAGENTA "\033[35m"
-# define CYAN    "\033[36m"
-# define WHITE   "\033[37m"
 
 # define PROMT "\033[33m->\033[0m pipex: "
 
@@ -40,7 +28,7 @@ typedef struct s_cmd
 	int		pipe[2];
 	pid_t	pid;
 	size_t	size;
-} t_cmd;
+}	t_cmd;
 
 typedef struct s_info
 {
@@ -49,12 +37,15 @@ typedef struct s_info
 	char	*file_out;
 	char	*limiter;
 	size_t	size;
-} t_info;
+}	t_info;
 
 char	**split_path(char const *s, char c);
 void	ft_free(char **str);
 char	**free_array(char **array);
 void	exit_error(char *s);
 void	exit_error_arg(char *msg, char *arg);
+void	execute_commands(t_info *info, char **env);
+char	*get_env_value(char *name, char **env);
+void	pipex_handler(t_info *info, int i);
 
 #endif

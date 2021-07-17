@@ -1,4 +1,5 @@
 NAME	=	pipex
+NAME_BONUS = pipex_bonus
 SRCDIR	=	src
 OBJDIR	=	.obj
 FT		=	libft
@@ -9,7 +10,10 @@ HFILES	=	$(addprefix $(INC)/, $(HEADER))
 
 SRCS	= main.c \
 		  utils.c \
-		  split_path.c
+		  split_path.c \
+		  execute.c \
+		  pipex_handler.c
+#SRCS_BONUS	=
 
 SRCS	:=	$(addprefix $(SRCDIR)/, $(SRCS))
 FLAGS	=	-g -Wall -Wextra -Werror
@@ -37,7 +41,7 @@ fclean: clean
 	rm -f ${NAME}
 re: fclean all
 
-bonus: ${NAME}
+bonus: ${NAME_BONUS}
 
 norm:
 	norminette src/* inc/*

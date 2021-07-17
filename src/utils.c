@@ -1,10 +1,9 @@
 #include "pipex.h"
 #include <errno.h>
 
-
 void	ft_free(char **str)
 {
-	if(!*str)
+	if (!*str)
 		return ;
 	free(*str);
 	*str = NULL;
@@ -40,4 +39,29 @@ void	exit_error_arg(char *msg, char *arg)
 	ft_putstr_fd(msg, STDERR);
 	ft_putendl_fd(arg, STDERR);
 	exit(EXIT_FAILURE);
+}
+
+char	*get_env_value(char *name, char **env)
+{
+	int		i;
+	char	*eq;
+	char	*value;
+
+	i = 0;
+	while (env[i])
+	{
+		if (!ft_strncmp(env[i], name, ft_strlen(name)))
+		{
+			eq = ft_strchr(env[i], '=');
+			if (eq)
+			{
+				value = ft_strdup(eq + 1);
+				if (!value)
+					exit_error("Can not allocate value");
+				return (value);
+			}
+		}
+		i++;
+	}
+	return (NULL);
 }
