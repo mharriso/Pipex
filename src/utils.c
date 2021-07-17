@@ -34,12 +34,10 @@ void	exit_error(char *s)
 	exit(EXIT_FAILURE);
 }
 
-void	print_error(char *msg, char *arg)
+void	exit_error_arg(char *msg, char *arg)
 {
 	ft_putstr_fd(PROMT, STDERR);
 	ft_putstr_fd(msg, STDERR);
-	if (errno)
-		perror(arg);
-	else
-		ft_putendl_fd(arg, STDERR);
+	ft_putendl_fd(arg, STDERR);
+	exit(EXIT_FAILURE);
 }

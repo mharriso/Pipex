@@ -46,9 +46,9 @@ void	save_args(t_info *info, int argc, char **argv)
 
 void	save_args_bonus(t_info *info, int argc, char **argv)
 {
-	if(argc > 1 && !ft_strcmp(argv[1], "here_doc"))
+	if (argc > 1 && !ft_strcmp(argv[1], "here_doc"))
 	{
-		if(argc != 6)
+		if (argc != 6)
 			exit_error("Invalid arguments: here_doc LIMITER cmd cmd1 file");
 		info->limiter = argv[2];
 		info->size = 2;
@@ -153,6 +153,8 @@ int	open_file(char *fname, int red_type)
 	else if (red_type == R_DRIGHT)
 		flags = O_CREAT | O_WRONLY | O_APPEND;
 	fd = open(fname, flags, S_IREAD | S_IWRITE);
+	if (fd == -1)
+		exit_error(fname);
 	return (fd);
 }
 
@@ -162,14 +164,14 @@ int	here_doc(t_info *info)
 	int		ret;
 	char	*line;
 
-	doc = open(info->file_in, O_CREAT | O_RDWR | O_TRUNC, S_IREAD | S_IRWXU | S_IRWXG | S_IRWXO);
+	doc = open(info->file_in, O_CREAT | O_RDWR | O_TRUNC, S_IREAD | S_IRWXU);
 	if (doc == -1)
 		exit_error(info->file_in);
 	write(1, "> ", 2);
 	ret = get_next_line(1, &line);
 	while (ret == 1)
 	{
-		if(!ft_strcmp(line, info->limiter))
+		if (!ft_strcmp(line, info->limiter))
 			break ;
 		write(doc, line, ft_strlen(line));
 		write(doc, "\n", 1);
@@ -178,23 +180,53 @@ int	here_doc(t_info *info)
 	}
 	close(doc);
 	doc = open(info->file_in, O_RDONLY);
+	if (doc == -1)
+		exit_error(info->file_in);
 	return (doc);
 }
+void	pipex_handler(t_info *info, int i)
+{
+	int		fd;
+	char	*type;
 
+	type = info->cmd[i].type;
+	if (type == R_LEFT)
+	{
+		if (info->limiter)
+			fd = here_doc(info);
+		else
+			fd = open_file(info->file_in, R_LEFT);
+		if (dup2(fd, STDIN) == -1)
+			exit_error("dup2");
+		if (dup2(info->cmd[i].pipe[SIDE_OUT], STDOUT) == -1)
+			exit_error("dup2");
+	}
+	else if (type == R_RIGHT || type == R_DRIGHT)
+	{
+		fd = open_file(info->file_out, type);
+		if (dup2(fd, STDOUT) == -1)
+			exit_error("dup2");
+		if (dup2(info->cmd[i - 1].pipe[SIDE_IN], STDIN) == -1)
+			exit_error("dup2");
+	}
+	else if (type == PIPE)
+	{
+		if (dup2(info->cmd[i].pipe[SIDE_OUT], STDOUT) == -1)
+			exit_error("dup2");
+		if (dup2(info->cmd[i - 1].pipe[SIDE_IN], STDIN) == -1)
+			exit_error("dup2");
+	}
+	close(info->cmd[i].pipe[SIDE_OUT]);
+	close(info->cmd[i].pipe[SIDE_IN]);
+}
 void	execute_commands(t_info *info, char **env)
 {
 	size_t	i;
-	int		fd;
 
 	get_path_to_cmd(info, env);
 	i = -1;
 	while (++i < info->size)
 	{
-		if (info->cmd[i].path == NULL)
-		{
-			print_error(info->cmd[i].arg[0], ": command not found");
-			continue ;
-		}
 		if (pipe(info->cmd[i].pipe) == -1)
 			exit_error("Pipe");
 		info->cmd[i].pid = fork();
@@ -202,56 +234,27 @@ void	execute_commands(t_info *info, char **env)
 			exit_error("Fork");
 		else if (info->cmd[i].pid == 0)
 		{
-			if (info->cmd[i].type == R_LEFT)
-			{
-				if(info->limiter)
-					fd = here_doc(info);
-				else
-					fd = open_file(info->file_in, R_LEFT);
-				if (fd == -1)
-					exit_error(info->file_in);
-				if (dup2(fd, STDIN) == -1)
-					exit_error("dup2");
-				if (dup2(info->cmd[i].pipe[SIDE_OUT], STDOUT) == -1)
-					exit_error("dup2");
-				close(info->cmd[i].pipe[SIDE_OUT]);
-				close(info->cmd[i].pipe[SIDE_IN]);
-			}
-			else if (info->cmd[i].type == R_RIGHT || info->cmd[i].type == R_DRIGHT)
-			{
-				fd = open_file(info->file_out, info->cmd[i].type);
-				if (fd == -1)
-					exit_error(info->file_out);
-				if (dup2(fd, STDOUT) == -1)
-					exit_error("dup2");
-				if (dup2(info->cmd[i - 1].pipe[SIDE_IN], STDIN) == -1)
-					exit_error("dup2");
-				close(info->cmd[i].pipe[SIDE_OUT]);
-				close(info->cmd[i].pipe[SIDE_IN]);
-			}
-			else if (info->cmd[i].type == PIPE)
-			{
-				if (dup2(info->cmd[i].pipe[SIDE_OUT], STDOUT) == -1)
-					exit_error("dup2");
-				if (dup2(info->cmd[i - 1].pipe[SIDE_IN], STDIN) == -1)
-					exit_error("dup2");
-				close(info->cmd[i].pipe[SIDE_OUT]);
-				close(info->cmd[i].pipe[SIDE_IN]);
-			}
+			pipex_handler(info, i);
+			if (info->cmd[i].path == NULL)
+				exit_error_arg(info->cmd[i].arg[0], ": command not found");
 			execve(info->cmd[i].path, info->cmd[i].arg, env);
 			exit_error("execve");
 		}
 		else
 		{
 			close(info->cmd[i].pipe[SIDE_OUT]);
-			if(info->cmd[i].type != R_LEFT)
+			if (info->cmd[i].type != R_LEFT)
 				close(info->cmd[i - 1].pipe[SIDE_IN]);
 			if (info->cmd[i].type == R_RIGHT || info->cmd[i].type == R_DRIGHT)
+			{
 				close(info->cmd[i].pipe[SIDE_IN]);
+				if (info->limiter)
+					unlink(info->file_in);
+			}
 		}
 	}
-	for(size_t k = 0; k < info->size; k++)
-			wait(NULL);
+	while (i--)
+		wait(NULL);
 }
 
 void	free_info(t_info *info)
@@ -278,10 +281,7 @@ int	main(int argc, char const **argv, char **env)
 		exit_error("Can not allocate info");
 	save_args_bonus(info, argc, (char **)argv);
 	execute_commands(info, env);
-		if(info->limiter)
-		unlink(info->file_in);
 	free_info(info);
-	sleep(10);
-
+	//sleep(10);
 	return (0);
 }

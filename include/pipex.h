@@ -55,9 +55,6 @@ char	**split_path(char const *s, char c);
 void	ft_free(char **str);
 char	**free_array(char **array);
 void	exit_error(char *s);
-void	print_error(char *msg, char *arg);
-
-
-
+void	exit_error_arg(char *msg, char *arg);
 
 #endif
