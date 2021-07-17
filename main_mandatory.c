@@ -39,8 +39,8 @@ int	main(int argc, char const **argv, char **env)
 		exit_error("Can not allocate info");
 	save_args(info, argc, (char **)argv);
 	execute_commands(info, env);
-	free_info(info);
 	if (info->limiter)
 		unlink("here_doc");
+	free_info(info);
 	return (0);
 }
