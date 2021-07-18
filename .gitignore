@@ -56,3 +56,4 @@ minishell_intra
 .vscode/settings.json
 .gitignore
 pipex
+.DS_Store

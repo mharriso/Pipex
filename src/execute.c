@@ -4,6 +4,8 @@ static char	*set_path(char *path, char *cmd)
 {
 	char	*res;
 
+	if (!cmd[0])
+		return (NULL);
 	if (cmd[0] == '.' || cmd[0] == '/')
 		res = ft_strdup(cmd);
 	else

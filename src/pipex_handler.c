@@ -38,7 +38,7 @@ static int	here_doc(t_info *info)
 		ret = get_next_line(1, &line);
 	}
 	close(doc);
-	doc = open(info->file_in, O_RDONLY);
+	doc = open("here_doc", O_RDONLY);
 	return (doc);
 }
 
